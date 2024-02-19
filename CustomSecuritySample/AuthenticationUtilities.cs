@@ -22,19 +22,16 @@
 #endregion
 
 using System;
-using System.Data;
-using System.Data.SqlClient;
+using System.DirectoryServices.AccountManagement;
+using System.Globalization;
+using System.Management;
 using System.Security.Cryptography;
 using System.Text.RegularExpressions;
 using System.Web.Security;
-using System.Management;
-using System.Xml;
-using System.Text;
-using System.Globalization;
 
 namespace Microsoft.Samples.ReportingServices.CustomSecurity
 {
-   [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Performance", "CA1812:AvoidUninstantiatedInternalClasses")]
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Performance", "CA1812:AvoidUninstantiatedInternalClasses")]
    internal sealed class AuthenticationUtilities
    {
       // The path of any item in the report server database 
@@ -69,44 +66,44 @@ namespace Microsoft.Samples.ReportingServices.CustomSecurity
       }
 
 
-      // Stores the account details in a SQL table named UserAccounts
-      [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Usage", "CA2201:DoNotRaiseReservedExceptionTypes"), System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Reliability", "CA2000:DisposeObjectsBeforeLosingScope")]
-      internal static void StoreAccountDetails(string userName,
-         string passwordHash,
-         string salt)
-      {
-         // See "How To Use DPAPI (Machine Store) from ASP.NET" for 
-         // information about securely storing connection strings.
-            using (SqlConnection conn= new SqlConnection(Properties.Settings.Default.Database_ConnectionString))
-            {
-            SqlCommand cmd = new SqlCommand("RegisterUser", conn);
-            cmd.CommandType = CommandType.StoredProcedure;
-            SqlParameter sqlParam = null;
+      //// Stores the account details in a SQL table named UserAccounts
+      //[System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Usage", "CA2201:DoNotRaiseReservedExceptionTypes"), System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Reliability", "CA2000:DisposeObjectsBeforeLosingScope")]
+      //internal static void StoreAccountDetails(string userName,
+      //   string passwordHash,
+      //   string salt)
+      //{
+      //   // See "How To Use DPAPI (Machine Store) from ASP.NET" for 
+      //   // information about securely storing connection strings.
+      //      using (SqlConnection conn= new SqlConnection(Properties.Settings.Default.Database_ConnectionString))
+      //      {
+      //      SqlCommand cmd = new SqlCommand("RegisterUser", conn);
+      //      cmd.CommandType = CommandType.StoredProcedure;
+      //      SqlParameter sqlParam = null;
 
-            sqlParam = cmd.Parameters.Add("@userName", SqlDbType.VarChar, 40);
-            sqlParam.Value = userName;
+      //      sqlParam = cmd.Parameters.Add("@userName", SqlDbType.VarChar, 40);
+      //      sqlParam.Value = userName;
 
-            sqlParam = cmd.Parameters.Add(
-             "@passwordHash", SqlDbType.VarChar, 50);
-            sqlParam.Value = passwordHash;
+      //      sqlParam = cmd.Parameters.Add(
+      //       "@passwordHash", SqlDbType.VarChar, 50);
+      //      sqlParam.Value = passwordHash;
 
-            sqlParam = cmd.Parameters.Add("@salt", SqlDbType.VarChar, 10);
-            sqlParam.Value = salt;
+      //      sqlParam = cmd.Parameters.Add("@salt", SqlDbType.VarChar, 10);
+      //      sqlParam.Value = salt;
 
-            try
-            {
-               conn.Open();
-               cmd.ExecuteNonQuery();
-            }
-            catch (Exception ex)
-            {
-               // Code to check for primary key violation (duplicate account 
-               // name) or other database errors omitted for clarity
-               throw new Exception(string.Format(CultureInfo.InvariantCulture,
-                 CustomSecurity.AddAccountError + ex.Message));
-            }
-         }
-      }
+      //      try
+      //      {
+      //         conn.Open();
+      //         cmd.ExecuteNonQuery();
+      //      }
+      //      catch (Exception ex)
+      //      {
+      //         // Code to check for primary key violation (duplicate account 
+      //         // name) or other database errors omitted for clarity
+      //         throw new Exception(string.Format(CultureInfo.InvariantCulture,
+      //           CustomSecurity.AddAccountError + ex.Message));
+      //      }
+      //   }
+      //}
 
       // Method that indicates whether 
       // the supplied username and password are valid
@@ -114,48 +111,64 @@ namespace Microsoft.Samples.ReportingServices.CustomSecurity
       internal static bool VerifyPassword(string suppliedUserName,
          string suppliedPassword)
       {
-         bool passwordMatch = false;
-         // Get the salt and pwd from the database based on the user name.
-         // See "How To: Use DPAPI (Machine Store) from ASP.NET," "How To:
-         // Use DPAPI (User Store) from Enterprise Services," and "How To:
-         // Create a DPAPI Library" on MSDN for more information about 
-         // how to use DPAPI to securely store connection strings.
-         using (SqlConnection conn = new SqlConnection(Properties.Settings.Default.Database_ConnectionString))
-          {
-            SqlCommand cmd = new SqlCommand("LookupUser", conn);
-            cmd.CommandType = CommandType.StoredProcedure;
+            bool passwordMatch = false;
+            using (PrincipalContext context = new PrincipalContext(ContextType.Machine))
+            {
+                passwordMatch = context.ValidateCredentials(suppliedUserName, suppliedPassword);
+            }
 
-            SqlParameter sqlParam = cmd.Parameters.Add("@userName",
-              SqlDbType.VarChar,
-              255);
-            sqlParam.Value = suppliedUserName;
-            try
+            if (!passwordMatch)
             {
-               conn.Open();
-               using (SqlDataReader reader = cmd.ExecuteReader())
-               {
-                  reader.Read(); // Advance to the one and only row
-                  // Return output parameters from returned data stream
-                  string dbPasswordHash = reader.GetString(0);
-                  string salt = reader.GetString(1);
-                  // Now take the salt and the password entered by the user
-                  // and concatenate them together.
-                  string passwordAndSalt = String.Concat(suppliedPassword, salt);
-                  // Now hash them
-                  string hashedPasswordAndSalt =
-                  FormsAuthentication.HashPasswordForStoringInConfigFile(
-                    passwordAndSalt, "SHA1");
-                  // Now verify them. Returns true if they are equal
-                  passwordMatch = hashedPasswordAndSalt.Equals(dbPasswordHash);
-               }
+                using (PrincipalContext context = new PrincipalContext(ContextType.Domain))
+                {
+                    passwordMatch = context.ValidateCredentials(suppliedUserName, suppliedPassword);
+                }
             }
-            catch (Exception ex)
-            {
-               throw new Exception(string.Format(CultureInfo.InvariantCulture,
-                     CustomSecurity.VerifyUserException + ex.Message));
-            }
-         }
-         return passwordMatch;
+            return passwordMatch;
+
+            //bool passwordMatch = false;
+            //// Get the salt and pwd from the database based on the user name.
+            //// See "How To: Use DPAPI (Machine Store) from ASP.NET," "How To:
+            //// Use DPAPI (User Store) from Enterprise Services," and "How To:
+            //// Create a DPAPI Library" on MSDN for more information about 
+            //// how to use DPAPI to securely store connection strings.
+            //using (SqlConnection conn = new SqlConnection(Properties.Settings.Default.Database_ConnectionString))
+            // {
+            //   SqlCommand cmd = new SqlCommand("LookupUser", conn);
+            //   cmd.CommandType = CommandType.StoredProcedure;
+
+            //   SqlParameter sqlParam = cmd.Parameters.Add("@userName",
+            //     SqlDbType.VarChar,
+            //     255);
+            //   sqlParam.Value = suppliedUserName;
+            //   try
+            //   {
+            //      conn.Open();
+            //      using (SqlDataReader reader = cmd.ExecuteReader())
+            //      {
+            //         reader.Read(); // Advance to the one and only row
+            //         // Return output parameters from returned data stream
+            //         string dbPasswordHash = reader.GetString(0);
+            //         string salt = reader.GetString(1);
+            //         // Now take the salt and the password entered by the user
+            //         // and concatenate them together.
+            //         string passwordAndSalt = String.Concat(suppliedPassword, salt);
+            //         // Now hash them
+            //         string hashedPasswordAndSalt =
+            //         FormsAuthentication.HashPasswordForStoringInConfigFile(
+            //           passwordAndSalt, "SHA1");
+            //         // Now verify them. Returns true if they are equal
+            //         passwordMatch = hashedPasswordAndSalt.Equals(dbPasswordHash);
+            //      }
+            //   }
+            //   catch (Exception ex)
+            //   {
+            //      throw new Exception(string.Format(CultureInfo.InvariantCulture,
+            //            CustomSecurity.VerifyUserException + ex.Message));
+            //   }
+            //}
+            //return passwordMatch;
+            //return true;
       }
 
       // Method to verify that the user name does not contain any

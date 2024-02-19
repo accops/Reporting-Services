@@ -20,31 +20,19 @@
 ===========================================================================*/
 #endregion
 
-using System;
-using System.Collections;
-using System.ComponentModel;
-using System.Data;
-using System.Drawing;
-using System.Web;
-using System.Web.SessionState;
-using System.Web.UI;
-using System.Web.UI.WebControls;
-using System.Web.UI.HtmlControls;
-using System.Data.SqlClient;
-using System.Security.Cryptography;
-using System.Web.Security;
-using Microsoft.ReportingServices.Interfaces;
 using Microsoft.Samples.ReportingServices.CustomSecurity.App_LocalResources;
+using System;
 using System.Globalization;
+using System.Web.Security;
 
 namespace Microsoft.Samples.ReportingServices.CustomSecurity
 {
-   public class Logon : System.Web.UI.Page
+    public class Logon : System.Web.UI.Page
    {
       protected System.Web.UI.WebControls.Label LblUser;
       protected System.Web.UI.WebControls.TextBox TxtPwd;
       protected System.Web.UI.WebControls.TextBox TxtUser;
-      protected System.Web.UI.WebControls.Button BtnRegister;
+      //protected System.Web.UI.WebControls.Button BtnRegister;
       protected System.Web.UI.WebControls.Button BtnLogon;
       protected System.Web.UI.WebControls.Label lblMessage;
       protected System.Web.UI.WebControls.Label Label1;
@@ -65,38 +53,38 @@ namespace Microsoft.Samples.ReportingServices.CustomSecurity
       private void InitializeComponent()
       {    
          this.BtnLogon.Click += new System.EventHandler(this.ServerBtnLogon_Click);
-         this.BtnRegister.Click += new System.EventHandler(this.BtnRegister_Click);
+         //this.BtnRegister.Click += new System.EventHandler(this.BtnRegister_Click);
          this.Load += new System.EventHandler(this.Page_Load);
 
       }
       #endregion
 
-       [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Design", "CA1031:DoNotCatchGeneralExceptionTypes")]
-      private void BtnRegister_Click(object sender, 
-         System.EventArgs e)
-      {
-         string salt = AuthenticationUtilities.CreateSalt(5);
-         string passwordHash =
-            AuthenticationUtilities.CreatePasswordHash(TxtPwd.Text, salt);
-         if (AuthenticationUtilities.ValidateUserName(TxtUser.Text))
-         {
-            try
-            {
-               AuthenticationUtilities.StoreAccountDetails(
-                  TxtUser.Text, passwordHash, salt);
-            }
-            catch(Exception ex)
-            {
-              lblMessage.Text = string.Format(CultureInfo.InvariantCulture, ex.Message);
-            }
-         }
-         else
-         {
+      // [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Design", "CA1031:DoNotCatchGeneralExceptionTypes")]
+      //private void BtnRegister_Click(object sender, 
+      //   System.EventArgs e)
+      //{
+      //   string salt = AuthenticationUtilities.CreateSalt(5);
+      //   string passwordHash =
+      //      AuthenticationUtilities.CreatePasswordHash(TxtPwd.Text, salt);
+      //   if (AuthenticationUtilities.ValidateUserName(TxtUser.Text))
+      //   {
+      //      try
+      //      {
+      //         AuthenticationUtilities.StoreAccountDetails(
+      //            TxtUser.Text, passwordHash, salt);
+      //      }
+      //      catch(Exception ex)
+      //      {
+      //        lblMessage.Text = string.Format(CultureInfo.InvariantCulture, ex.Message);
+      //      }
+      //   }
+      //   else
+      //   {
 
-           lblMessage.Text = string.Format(CultureInfo.InvariantCulture,
-               Logon_aspx.UserNameError);
-         }
-      }
+      //     lblMessage.Text = string.Format(CultureInfo.InvariantCulture,
+      //         Logon_aspx.UserNameError);
+      //   }
+      //}
 
        [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Design", "CA1031:DoNotCatchGeneralExceptionTypes")]
       private void ServerBtnLogon_Click(object sender, 
@@ -132,7 +120,7 @@ namespace Microsoft.Samples.ReportingServices.CustomSecurity
             // GenericPrincipal objects
            lblMessage.Text = string.Format(CultureInfo.InvariantCulture,
               Logon_aspx.LoginSuccess);
-           BtnRegister.Enabled = false;
+           //BtnRegister.Enabled = false;
          }
          else
          {
